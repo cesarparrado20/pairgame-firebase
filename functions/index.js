@@ -3,7 +3,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 exports.createProfile = functions.auth.user().onCreate((user) => {
-    const profilesRef = admin.database().ref('profiles');
+    const profilesRef = admin.database().ref('/profiles');
     profilesRef.set({
         [user.uid]: {
             avatar: 1,
