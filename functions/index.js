@@ -2,6 +2,17 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
+exports.example = functions.https.onRequest((req, res) => {  
+    const profilesRef = admin.database().ref('/example');
+    const response = profilesRef.set({
+        1: {
+            avatar: 1,
+            points: 0
+        }
+    });
+    res.send('OK!')
+});
+
 exports.createProfile = functions.auth.user().onCreate((user) => {
     const profilesRef = admin.database().ref('/profiles');
     profilesRef.set({
@@ -41,12 +52,11 @@ exports.scorePoints = functions.database.ref('/records/{pushId}').onCreate((snap
 
 exports.addLevel = functions.database.ref('/images/{pushId}').onCreate((snapshot, context) => {
     let currentLevel = 0;
-    let totalImages = snapshot.ref.parent.numChildren();
+    let totalImages = 0;
     if((totalImages % 3) === 0){
         currentLevel = totalImages / 3;
         snapshot.ref.parent.orderByChild('level').equalTo(0).update({
             'level': currentLevel
         });
     }
-    return snapshot.ref.child('level').set(currentLevel);
 });
