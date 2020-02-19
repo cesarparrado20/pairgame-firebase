@@ -2,13 +2,26 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-exports.example = functions.https.onRequest((req, res) => {  
-    const profilesRef = admin.database().ref('/example');
-    const response = profilesRef.set({
-        1: {
-            avatar: 1,
-            points: 0
-        }
+exports.listImages = functions.https.onRequest((req, res) => {
+    let retorno = [];  
+    const imagesRef = admin.database().ref('/images');
+    imagesRef.on('value', function(snapshot){
+        retorno = snapshot.val();
+    });
+    res.send(retorno)
+});
+
+exports.scraping = functions.https.onRequest((req, res) => {
+    const imagesRef = admin.database().ref('/images');
+    var totalImages = 0;
+    imagesRef.on('value', function(snapshot){
+        totalImages = snapshot.numChildren();
+    });
+    imagesRef.push({
+        name: 'Example',
+        url: 'xxx',
+        conditional: false,
+        total: (totalImages + 1)
     });
     res.send('OK!')
 });
@@ -51,12 +64,20 @@ exports.scorePoints = functions.database.ref('/records/{pushId}').onCreate((snap
 });
 
 exports.addLevel = functions.database.ref('/images/{pushId}').onCreate((snapshot, context) => {
-    let currentLevel = 0;
-    let totalImages = 0;
-    if((totalImages % 3) === 0){
-        currentLevel = totalImages / 3;
-        snapshot.ref.parent.orderByChild('level').equalTo(0).update({
-            'level': currentLevel
-        });
+    var levelCase = 1;
+    const totalImages = snapshot.child('total').val();
+    if(totalImages > 0){
+        switch((totalImages % 3)){
+            case 0:
+                levelCase = (totalImages / 3)
+                break;
+            case 1:
+                levelCase = ((totalImages + 2)/3)
+                break;
+            case 2:
+                levelCase = ((totalImages + 1)/3)
+                break;
+        }
     }
+    snapshot.ref.child('level').set(levelCase)
 });
