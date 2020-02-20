@@ -1,29 +1,86 @@
+const request = require('request-promise');
+const cheerio = require('cheerio');
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-exports.listImages = functions.https.onRequest((req, res) => {
+function getLevel(ref, total){
+    var levelCase = 1;
+    switch((total % 3)){
+        case 0:
+            levelCase = (total / 3)
+            ref.orderByChild('level').equalTo(levelCase).on('value', function(snapshot){
+                snapshot.forEach(function(childSnapshot){
+                    childSnapshot.ref.update({
+                        available: true
+                    })
+                });
+            });
+            break;
+        case 1:
+            levelCase = ((total + 2)/3)
+            break;
+        case 2:
+            levelCase = ((total + 1)/3)
+            break;
+    }
+    return levelCase;
+}
+
+function addImage(pub, imagesRef, count){
+    let exists = false;
+    const id = pub.find('.news-description .news-id').text()
+    imagesRef.child(id).on('value', function(snapshot) {
+        exists = snapshot.exists()
+    });
+    if(!exists){
+        const title = pub.find('.news-description .news-title').text()
+        const url = pub.find('.news-image img').attr('src')
+        const level = getLevel(imagesRef, count)
+        const description = pub.find('.news-description .news-teaser').text().split('.')[0]
+        imagesRef.child(id).set({
+            title,
+            level,
+            description,
+            url,
+            available: false
+        });
+    }
+    return exists;
+}
+
+/* exports.listImages = functions.https.onRequest(async (req, res) => {
     let retorno = [];  
     const imagesRef = admin.database().ref('/images');
     imagesRef.on('value', function(snapshot){
         retorno = snapshot.val();
     });
     res.send(retorno)
-});
+}); */
 
-exports.scraping = functions.https.onRequest((req, res) => {
-    const imagesRef = admin.database().ref('/images');
+exports.scraping = functions.https.onRequest(async (req, res) => {
+    const pageEnd = req.query.page ? req.query.page : 1;
+    const urlScraping = req.query.url ? req.query.url : 'https://www.eso.org/public/images/potw/archive/year/2020';
     var totalImages = 0;
+    const imagesRef = admin.database().ref('/images');
     imagesRef.on('value', function(snapshot){
         totalImages = snapshot.numChildren();
     });
-    imagesRef.push({
-        name: 'Example',
-        url: 'xxx',
-        conditional: false,
-        total: (totalImages + 1)
-    });
-    res.send('OK!')
+    var count = totalImages + 1;
+    for(var x=0; x < pageEnd; x++){
+        const $ = await request({
+            uri: `${urlScraping}/list/${(x+1)}/`,
+            transform: body => cheerio.load(body)
+        });
+        $('.news-wrapper').each((i, el) => {
+            const pub = $(el);
+            const addConfirmation = addImage(pub, imagesRef, count);
+            if(addConfirmation){
+                count++;
+            }
+        });
+    }
+    res.send('Scraping exitoso!')
 });
 
 exports.createProfile = functions.auth.user().onCreate((user) => {
@@ -61,23 +118,4 @@ exports.scorePoints = functions.database.ref('/records/{pushId}').onCreate((snap
     profileRef.update({
         'points': newPoints
     });
-});
-
-exports.addLevel = functions.database.ref('/images/{pushId}').onCreate((snapshot, context) => {
-    var levelCase = 1;
-    const totalImages = snapshot.child('total').val();
-    if(totalImages > 0){
-        switch((totalImages % 3)){
-            case 0:
-                levelCase = (totalImages / 3)
-                break;
-            case 1:
-                levelCase = ((totalImages + 2)/3)
-                break;
-            case 2:
-                levelCase = ((totalImages + 1)/3)
-                break;
-        }
-    }
-    snapshot.ref.child('level').set(levelCase)
 });
