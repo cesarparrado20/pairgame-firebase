@@ -6,7 +6,7 @@ exports.createProfile = functions.auth.user().onCreate((user) => {
     const profilesRef = admin.database().ref('/profiles');
     profilesRef.child(user.uid).set({
         points: 0,
-        winner: []
+        worldSurpassed: []
     });
 });
 
@@ -17,15 +17,18 @@ exports.deleteProfile = functions.auth.user().onDelete((user) => {
 
 exports.scorePoints = functions.database.ref('/records/{pushId}').onCreate((snapshot, context) => {
     let currentPoints = 0;
+    let worldSurpassed = [];
     let newPoints = 0;
     const uidUser = snapshot.child('user').val();
     const completed = snapshot.child('completed').val();
     const profileRef = admin.database().ref(`/profiles/${uidUser}`);
     profileRef.on('value', function(snapshot) {
         currentPoints = snapshot.child('points').val();
+        worldSurpassed = snapshot.child('worldSurpassed').val();
     });
     if (completed) {
         newPoints = currentPoints + 3;
+        worldSurpassed.push(snapshot.child('level').val());
     } else {
         newPoints = currentPoints - 1;
     }
@@ -33,6 +36,7 @@ exports.scorePoints = functions.database.ref('/records/{pushId}').onCreate((snap
         newPoints = 0;
     }
     profileRef.update({
-        'points': newPoints
+        'points': newPoints,
+        worldSurpassed
     });
 });
