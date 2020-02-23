@@ -24,7 +24,10 @@ exports.scorePoints = functions.database.ref('/records/{pushId}').onCreate((snap
     const profileRef = admin.database().ref(`/profiles/${uidUser}`);
     profileRef.on('value', function(snapshot) {
         currentPoints = snapshot.child('points').val();
-        worldSurpassed = snapshot.child('worldSurpassed').val();
+        const auxWS = snapshot.child('worldSurpassed').val();
+        if(auxWS){
+            worldSurpassed = auxWS;
+        }
     });
     if (completed) {
         newPoints = currentPoints + 3;
