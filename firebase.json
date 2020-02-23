@@ -8,6 +8,23 @@
     },
     "database": {
       "port": 9002
+    },
+    "hosting": {
+      "port": 5000
     }
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }
